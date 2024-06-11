@@ -4,6 +4,7 @@ defmodule CoAP.Message do
   alias CoAP.Multipart
 
   # import Logger, only: [debug: 1]
+  require Logger
 
   # @max_block_size 1024
 
