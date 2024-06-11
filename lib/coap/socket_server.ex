@@ -91,23 +91,38 @@ defmodule CoAP.SocketServer do
   def handle_info({:udp, _socket, peer_ip, peer_port, data}, state) do
     debug("CoAP socket received raw data #{to_hex(data)} from #{inspect({peer_ip, peer_port})}")
 
-    message = Message.decode(data)
+    case decode_message(data) do
+      {:ok, message} ->
+        connection_id = {peer_ip, peer_port, message.token}
 
-    {connection, new_state} =
-      connection_for(message.request, {peer_ip, peer_port, message.token}, state)
+        {connection, new_state} = connection_for(message.request, connection_id, state)
 
-    case connection do
-      nil ->
+        if connection do
+          send(connection, {:receive, message})
+
+          {:noreply, new_state}
+        else
+          # If we can't find a connection, we can't deliver the message to the client
+
+          warn(
+            "CoAP socket received message for lost connection from " <>
+              "ip: #{inspect(peer_ip)}, port: #{inspect(peer_port)}.  Message: #{inspect(message)}"
+          )
+
+          {:stop, :normal, state}
+        end
+
+      {:error, reason} ->
+        # If we can't decode the message, we can't construct the connection_id which is necessary to lookup
+        # the connection process, which is required to return an error message to the client.
+
         warn(
-          "CoAP socket received message for lost connection from " <>
-            "ip: #{inspect(peer_ip)}, port: #{inspect(peer_port)}.  Message: #{inspect(message)}"
+          "CoAP socket failed to decode udp packets because #{inspect(reason)} from " <>
+            "ip: #{inspect(peer_ip)}, port: #{inspect(peer_port)}.  data: #{inspect(data, limit: :infinity, print_limit: :infinity)}"
         )
 
-      c ->
-        send(c, {:receive, message})
+        {:stop, :normal, state}
     end
-
-    {:noreply, new_state}
   end
 
   # Deliver messages to be sent to a peer
@@ -148,9 +163,7 @@ defmodule CoAP.SocketServer do
     connection = Map.get(state[:connections], connection_id)
 
     debug(
-      "CoAP socket SERVER received DOWN:#{reason} in CoAP.SocketServer from:#{
-        inspect(connection_id)
-      }:#{inspect(connection)}:#{inspect(ref)}"
+      "CoAP socket SERVER received DOWN:#{reason} in CoAP.SocketServer from:#{inspect(connection_id)}:#{inspect(connection)}:#{inspect(ref)}"
     )
 
     {:noreply,
@@ -166,9 +179,7 @@ defmodule CoAP.SocketServer do
     connection = Map.get(state[:connections], connection_id)
 
     debug(
-      "CoAP socket CLIENT received DOWN:#{reason} in CoAP.SocketServer from: #{
-        inspect(connection_id)
-      }:#{inspect(connection)}:#{inspect(ref)}"
+      "CoAP socket CLIENT received DOWN:#{reason} in CoAP.SocketServer from: #{inspect(connection_id)}:#{inspect(connection)}:#{inspect(ref)}"
     )
 
     {:stop, :normal, state}
@@ -239,4 +250,14 @@ defmodule CoAP.SocketServer do
 
   defp type(%{port: 0}), do: :client
   defp type(_), do: :server
+
+  defp decode_message(data) do
+    {:ok, Message.decode(data)}
+  rescue
+    e ->
+      {:error, e}
+  catch
+    e ->
+      {:error, e}
+  end
 end
