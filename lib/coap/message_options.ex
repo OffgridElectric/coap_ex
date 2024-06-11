@@ -55,9 +55,19 @@ defmodule CoAP.MessageOptions do
         <<value::binary-size(length), rest::binary>> ->
           decode(rest, key, append_option(CoAP.MessageOption.decode(key, value), option_list))
 
-        <<>> ->
-          decode(<<>>, key, append_option(CoAP.MessageOption.decode(key, <<>>), option_list))
+        # <<>> ->
+        #   decode(<<>>, key, append_option(CoAP.MessageOption.decode(key, <<>>), option_list))
+
+        tail ->
+          case CoAP.MessageOption.decode(key, tail) do
+            {key, value} -> decode(<<>>, key, append_option({key, value}, option_list))
+            {key, value, rest} -> decode(rest, key, append_option({key, value}, option_list))
+          end
       end
+
+    catch
+      _error ->
+        {option_list, tail}
     end
 
     defp decode_extended(delta_sum, delta, length, tail) do
