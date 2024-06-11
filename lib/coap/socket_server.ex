@@ -93,8 +93,9 @@ defmodule CoAP.SocketServer do
 
     message = Message.decode(data)
 
-    {connection, new_state} =
-      connection_for(message.request, {peer_ip, peer_port, message.token}, state)
+    connection_id = {peer_ip, peer_port, message.token}
+
+    {connection, new_state} = connection_for(message.request, connection_id, state)
 
     case connection do
       nil ->
