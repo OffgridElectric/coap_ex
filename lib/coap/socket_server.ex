@@ -108,6 +108,13 @@ defmodule CoAP.SocketServer do
     end
 
     {:noreply, new_state}
+  catch
+    e ->
+      warn(
+        "CoAP socket failed to decode udp packets because #{inspect e} from " <>
+          "ip: #{inspect(peer_ip)}, port: #{inspect(peer_port)}.  data: #{inspect(data, limit: :infinity, print_limit: :infinity)}"
+      )
+      {:noreply, state}
   end
 
   # Deliver messages to be sent to a peer
