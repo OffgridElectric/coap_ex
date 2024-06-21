@@ -36,9 +36,17 @@ defmodule CoAP.Phoenix.Listener do
 
     info("Starting CoAP.Phoenix.Listener: #{inspect(config)}")
 
-    {:ok, server} = CoAP.SocketServer.start_link([{@adapter, endpoint}, config[:port], config])
-    # _TODO: ref and monitor?
-    # _TODO: die if server dies?
+    {:ok, server} =
+      case config[:ssl] do
+        nil ->
+          CoAP.SocketServer.start_link([{@adapter, endpoint}, config[:port], config])
+
+        _ ->
+          CoAP.SecureSocketServer.start_link([{@adapter, endpoint}, config[:port], config[:ssl]])
+      end
+
+    # TODO: ref and monitor?
+    # TODO: die if server dies?
 
     {:ok, %{endpoint: endpoint, config: config, server: server}}
   end

@@ -57,6 +57,15 @@ config :my_app, MyApp.Coap.Endpoint,
   coap: [port: 5683, ack_timeout: 5000, processing_delay: 4500]
 ```
 
+or, for a DTLS secure connection:
+
+```
+config :my_app, MyApp.Coap.Endpoint,
+  http: false, https: false, server: false,
+  coap: [port: 5683, ssl: []]
+```
+
+
 In `lib/my_app.ex` add supervisor and listener for the endpoint:
 
 ```
