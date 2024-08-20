@@ -55,6 +55,7 @@ defmodule CoAP.SocketServer do
   def init([endpoint, port]), do: init([endpoint, port, []])
 
   def init([endpoint, {host, port, token}, connection]) do
+    Process.flag(:trap_exit, true)
     {:ok, socket} = :gen_udp.open(0, [:binary, {:active, true}, {:reuseaddr, true}])
 
     ip = normalize_host(host)
@@ -74,6 +75,7 @@ defmodule CoAP.SocketServer do
   end
 
   def init([endpoint, port, config]) do
+    Process.flag(:trap_exit, true)
     {:ok, socket} = :gen_udp.open(port, [:binary, {:active, true}, {:reuseaddr, true}])
 
     {:ok,
@@ -114,7 +116,8 @@ defmodule CoAP.SocketServer do
         "CoAP socket failed to decode udp packets because #{inspect e} from " <>
           "ip: #{inspect(peer_ip)}, port: #{inspect(peer_port)}.  data: #{inspect(data, limit: :infinity, print_limit: :infinity)}"
       )
-      {:noreply, state}
+
+      {:stop, e, state}
   end
 
   # Deliver messages to be sent to a peer
@@ -139,6 +142,7 @@ defmodule CoAP.SocketServer do
   # Handles message for completed connection
   # Removes complete connection from the registry and monitoring
   def handle_info({:DOWN, ref, :process, _from, reason}, state) do
+    IO.inspect("CoAP socket received DOWN:#{reason} from #{inspect(ref)}")
     {host, port, _} = Map.get(state.monitors, ref)
 
     :telemetry.execute(
@@ -148,6 +152,17 @@ defmodule CoAP.SocketServer do
     )
 
     connection_complete(type(state), ref, reason, state)
+  end
+
+  def handle_info(msg, state) do
+    IO.inspect("CoAP socket received unknown:#{msg}")
+    {:noreply, state}
+  end
+
+  def terminate(reason, state) do
+    IO.puts("CoAP terminating because #{inspect(reason)}")
+    IO.inspect(state, label: "CoAP.SocketServer state")
+    :ok
   end
 
   defp connection_complete(:server, ref, reason, %{monitors: monitors} = state) do

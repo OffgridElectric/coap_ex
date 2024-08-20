@@ -2,18 +2,57 @@ defmodule CoAP.SocketServerTest do
   use ExUnit.Case
 
   alias CoAP.SocketServer
+  alias CoAP.Adapters.GenericServer
+  alias CoAP.Message
 
-  test "handle_info/2" do
-    connection_id = {{10, 148, 21, 176}, 5683, <<252, 1, 46, 56>>}
-    state = %{connections: %{connection_id => self()}, monitors: %{}, endpoint: %{}, config: %{}}
+  @port 5827
 
-    message =
-      {:udp, self(), {10, 148, 21, 176}, 5683,
-       <<100, 69, 0, 1, 252, 1, 46, 56, 68, 80, 231, 168, 249, 100, 69, 0, 1, 252, 1, 46, 56, 68,
-         80, 231, 168, 249>>}
+  defmodule FakeEndpoint do
+    def request(message) do
+      # path should have api in it
+      # params should be empty
 
-    resp = SocketServer.handle_info(message, state)
+      payload =
+        case message.payload do
+          data when byte_size(data) > 0 -> data
+          _ -> "Created"
+        end
 
-    assert resp == {:noreply, state}
+      %Message{
+        type: :con,
+        code_class: 2,
+        code_detail: 1,
+        message_id: message.message_id,
+        token: message.token,
+        payload: payload
+      }
+    end
+  end
+
+  @tag :wip3
+  test "asdasdas" do
+    peer_ip = "127.0.0.1"
+    peer_port = @port + 3
+
+    {:ok, server} = SocketServer.start_link([{GenericServer, FakeEndpoint}, peer_port])
+
+    IO.inspect(server, label: "Server")
+
+    data =
+      <<100, 69, 0, 1, 252, 1, 46, 56, 68, 80, 231, 168, 249, 100, 69, 0, 1, 252, 1, 46, 56, 68,
+        80, 231, 168, 249>>
+
+    send(server, {:udp, :socket, peer_ip, peer_port, data})
+
+    # assert byte_size(response.payload) == 1024
+    response =
+      receive do
+        {:deliver, response, _peer} -> response
+        {:error, reason} -> {:error, reason}
+      after
+        10_000 -> {:error, {:timeout, :await_response}}
+      end
+
+    assert response == :ok
   end
 end
