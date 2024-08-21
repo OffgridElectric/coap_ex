@@ -56,7 +56,9 @@ defmodule CoAP.MessageOptions do
           decode(rest, key, append_option(CoAP.MessageOption.decode(key, value), option_list))
 
         <<>> ->
-          decode(<<>>, key, append_option(CoAP.MessageOption.decode(key, <<>>), option_list))
+          option = CoAP.MessageOption.decode(key, <<>>)
+          option_list = append_option(option, option_list)
+          decode(<<>>, key, option_list)
       end
     end
 
