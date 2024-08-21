@@ -56,7 +56,9 @@ defmodule CoAP.MessageOptions do
           decode(rest, key, append_option(CoAP.MessageOption.decode(key, value), option_list))
 
         <<>> ->
-          decode(<<>>, key, append_option(CoAP.MessageOption.decode(key, <<>>), option_list))
+          option = CoAP.MessageOption.decode(key, <<>>)
+          option_list = append_option(option, option_list)
+          decode(<<>>, key, option_list)
       end
     end
 
@@ -71,8 +73,13 @@ defmodule CoAP.MessageOptions do
             {new_tail1, delta_sum + key + 13}
 
           delta == 14 ->
-            <<key::size(16), new_tail1::binary>> = tail
-            {new_tail1, delta_sum + key + 269}
+            case tail do
+              <<key::size(16), new_tail1::binary>> ->
+                {new_tail1, delta_sum + key + 269}
+
+              _ ->
+                throw({:error, :invalid_option})
+            end
         end
 
       {tail2, option_length} =
