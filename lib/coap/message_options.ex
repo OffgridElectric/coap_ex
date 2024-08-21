@@ -73,8 +73,13 @@ defmodule CoAP.MessageOptions do
             {new_tail1, delta_sum + key + 13}
 
           delta == 14 ->
-            <<key::size(16), new_tail1::binary>> = tail
-            {new_tail1, delta_sum + key + 269}
+            case tail do
+              <<key::size(16), new_tail1::binary>> ->
+                {new_tail1, delta_sum + key + 269}
+
+              _ ->
+                throw({:error, :invalid_option})
+            end
         end
 
       {tail2, option_length} =
