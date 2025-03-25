@@ -3,7 +3,7 @@ defmodule CoAP.Adapters.Phoenix do
 
   alias CoAP.Phoenix.Request
 
-  import Logger, only: [warn: 1]
+  import Logger, only: [warning: 1]
 
   @moduledoc """
   1. Take a message
@@ -25,7 +25,7 @@ defmodule CoAP.Adapters.Phoenix do
   # def response(message, {endpoint, peer})
   # def ack({endpoint, _peer})
   def error({endpoint, context}) do
-    warn("CoAP Endpoint #{inspect(endpoint)} received an error #{inspect(context)}")
+    warning("CoAP Endpoint #{inspect(endpoint)} received an error #{inspect(context)}")
   end
 
   defp process(req, {endpoint, opts}) do

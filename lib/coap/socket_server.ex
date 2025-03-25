@@ -21,7 +21,7 @@ defmodule CoAP.SocketServer do
   use GenServer
 
   import CoAP.Util.BinaryFormatter, only: [to_hex: 1]
-  import Logger, only: [debug: 1, warn: 1]
+  import Logger, only: [debug: 1, warning: 1]
 
   alias CoAP.Message
 
@@ -98,7 +98,7 @@ defmodule CoAP.SocketServer do
 
     case connection do
       nil ->
-        warn(
+        warning(
           "CoAP socket received message for lost connection from " <>
             "ip: #{inspect(peer_ip)}, port: #{inspect(peer_port)}.  Message: #{inspect(message)}"
         )
